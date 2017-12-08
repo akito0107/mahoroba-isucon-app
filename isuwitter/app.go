@@ -26,7 +26,7 @@ import (
 	"os/signal"
 	"syscall"
 	"github.com/patrickmn/go-cache"
-	math "math"
+	"math"
 )
 
 type Tweet struct {
@@ -226,11 +226,11 @@ func topHandler(w http.ResponseWriter, r *http.Request) {
 		t.HTML = t.Text
 		t.Time = t.CreatedAt.Format("2006-01-02 15:04:05")
 
-//		t.UserName = getUserName(t.UserID)
-//		if t.UserName == "" {
-//			badRequest(w)
-//			return
-//		}
+		//		t.UserName = getUserName(t.UserID)
+		//		if t.UserName == "" {
+		//			badRequest(w)
+		//			return
+		//		}
 
 		for _, x := range result {
 			if x == t.UserName {
@@ -267,9 +267,9 @@ func tweetPostHandler(w http.ResponseWriter, r *http.Request) {
 
 	session := getSession(w, r)
 	userID, ok := session.Values["user_id"]
-    u := ""
+	u := ""
 	if ok {
-        u = getUserName(userID.(int))
+		u = getUserName(userID.(int))
 		if u == "" {
 			http.Redirect(w, r, "/", http.StatusFound)
 			return
@@ -320,8 +320,8 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for i, _ := range name {
-		next := strings.Index(alphabet, name[i:i+1])
-		next = int(math.Mod(26,float64(next)))
+		next := strings.Index(alphabet, name[i:i+1]) + 1
+		next = int(math.Mod(float64(next), 26))
 		fmt.Println("name[i] is %v,next is %v", name[i:i+1], next)
 		if (password[i:i+1] != alphabet[next+1:next+2]) {
 			fmt.Println("login error password is %v,expected password is %v", password[i:i+1], alphabet[next+1:next+2])
@@ -587,11 +587,11 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		// t.HTML = htmlify(t.Text)
 		t.HTML = t.Text
 		t.Time = t.CreatedAt.Format("2006-01-02 15:04:05")
-//		t.UserName = getUserName(t.UserID)
-//		if t.UserName == "" {
-//			badRequest(w)
-//			return
-//		}
+		//		t.UserName = getUserName(t.UserID)
+		//		if t.UserName == "" {
+		//			badRequest(w)
+		//			return
+		//		}
 		if strings.Index(t.HTML, query) != -1 {
 			tweets = append(tweets, &t)
 		}
