@@ -26,6 +26,7 @@ import (
 	"os/signal"
 	"syscall"
 	"github.com/patrickmn/go-cache"
+	"os/user"
 )
 
 type Tweet struct {
@@ -304,13 +305,13 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 	fmt.Println("name is %v,password is %v", name, password)
 
-	row := db.QueryRow(`SELECT id FROM users WHERE name = ?`, name)
-	user := User{}
-	err := row.Scan(&user.ID)
-	if err != nil && err != sql.ErrNoRows {
-		http.NotFound(w, r)
-		return
-	}
+	//row := db.QueryRow(`SELECT id FROM users WHERE name = ?`, name)
+	//user := User{}
+	//err := row.Scan(&user.ID)
+	//if err != nil && err != sql.ErrNoRows {
+	//	http.NotFound(w, r)
+	//	return
+	//}
 
 	//check password
 	if len(name) != len(password) {
@@ -333,7 +334,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		//}
 
 	session := getSession(w, r)
-	session.Values["user_id"] = user.ID
+	//session.Values["user_id"] = user.ID
 	session.Save(r, w)
 	http.Redirect(w, r, "/", http.StatusFound)
 }
