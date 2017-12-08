@@ -257,6 +257,7 @@ func tweetPostHandler(w http.ResponseWriter, r *http.Request) {
 	userID, ok := session.Values["user_id"]
     u := ""
 	if ok {
+        u = getUserName(userID.(int))
 		if u == "" {
 			http.Redirect(w, r, "/", http.StatusFound)
 			return
@@ -466,7 +467,7 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 	tweets := make([]*Tweet, 0)
 	for rows.Next() {
 		t := Tweet{}
-		err := rows.Scan(&t.ID, &t.UserID, &t.Text, &t.CreatedAt)
+		err := rows.Scan(&t.ID, &t.UserID, &t.Text, &t.CreatedAt, &t.UserName)
 		if err != nil && err != sql.ErrNoRows {
 			badRequest(w)
 			return
