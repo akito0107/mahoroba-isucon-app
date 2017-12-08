@@ -26,7 +26,6 @@ import (
 	"os/signal"
 	"syscall"
 	"github.com/patrickmn/go-cache"
-	"os/user"
 )
 
 type Tweet struct {
@@ -333,12 +332,6 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-		//next := strings.Index(alphabet, name[i:i+1]) + 1
-		//next = int(math.Mod(float64(next), 26))
-		//fmt.Println("name[i] is %v,next is %v", name[i:i+1], next)
-		//if (password[i:i+1] != alphabet[next:next+1]) {
-		//	fmt.Println("login error password is %v,expected password is %v", password[i:i+1], alphabet[next:next+1])
-		//}
 
 	session := getSession(w, r)
 	session.Values["user_id"] = userId
