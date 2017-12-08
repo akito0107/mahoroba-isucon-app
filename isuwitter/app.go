@@ -68,6 +68,9 @@ func getuserID(name string) int {
 }
 
 func getUserName(id int) string {
+	txn := a.StartTransaction("getUserName", nil, nil)
+	defer txn.End()
+
 	row := db.QueryRow(`SELECT name FROM users WHERE id = ?`, id)
 	user := User{}
 	err := row.Scan(&user.Name)
@@ -367,6 +370,8 @@ func unfollowHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func getSession(w http.ResponseWriter, r *http.Request) *sessions.Session {
+	txn := a.StartTransaction("getSession", nil, nil)
+	defer txn.End()
 	session, _ := store.Get(r, sessionName)
 
 	return session
