@@ -26,7 +26,6 @@ import (
 	"os/signal"
 	"syscall"
 	"github.com/patrickmn/go-cache"
-	"math"
 )
 
 type Tweet struct {
