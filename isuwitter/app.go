@@ -305,12 +305,19 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 	fmt.Println("name is %v,password is %v", name, password)
 
-	row := db.QueryRow(`SELECT id FROM users WHERE name = ?`, name)
-	user := User{}
-	err := row.Scan(&user.ID)
-	if err != nil && err != sql.ErrNoRows {
-		http.NotFound(w, r)
-		return
+	key := name
+
+	userId, found := c.Get(key)
+	if !found {
+		row := db.QueryRow(`SELECT id FROM users WHERE name = ?`, name)
+		user := User{}
+		err := row.Scan(&user.ID)
+		if err != nil && err != sql.ErrNoRows {
+			http.NotFound(w, r)
+			return
+		}
+		userId =user.ID
+		c.Set(key, user.ID, cache.DefaultExpiration)
 	}
 
 	//check password
@@ -334,7 +341,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		//}
 
 	session := getSession(w, r)
-	session.Values["user_id"] = user.ID
+	session.Values["user_id"] = userId
 	session.Save(r, w)
 	http.Redirect(w, r, "/", http.StatusFound)
 }
