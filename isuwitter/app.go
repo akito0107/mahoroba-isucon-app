@@ -185,6 +185,7 @@ func topHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
+		fmt.Println(err)
 		if err == sql.ErrNoRows {
 			http.NotFound(w, r)
 			return
@@ -196,6 +197,7 @@ func topHandler(w http.ResponseWriter, r *http.Request) {
 
 	result, err := loadFriends(name)
 	if err != nil {
+		fmt.Println(err)
 		badRequest(w)
 		return
 	}
@@ -205,6 +207,7 @@ func topHandler(w http.ResponseWriter, r *http.Request) {
 		t := Tweet{}
 		err := rows.Scan(&t.ID, &t.UserID, &t.Text, &t.CreatedAt, &t.UserName)
 		if err != nil && err != sql.ErrNoRows {
+			fmt.Println(err)
 			badRequest(w)
 			return
 		}
