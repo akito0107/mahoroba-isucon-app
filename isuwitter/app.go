@@ -651,6 +651,7 @@ func main() {
 		"%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&loc=Local&parseTime=true",
 		user, password, host, port, dbname,
 	))
+	db.SetMaxIdleConns(150)
 	if err != nil {
 		log.Fatalf("Failed to connect to DB: %s.", err.Error())
 	}
