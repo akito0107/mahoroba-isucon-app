@@ -25,7 +25,7 @@ import (
 	"net"
 	"os/signal"
 	"syscall"
-	"os/exec"
+	// "os/exec"
 	"github.com/go-redis/redis"
 )
 
@@ -157,27 +157,24 @@ func initializeHandler(w http.ResponseWriter, r *http.Request) {
 	//}
 	//defer resp.Body.Close()
 
-	path, _ := exec.LookPath("mysql")
-	exec.Command(path, "-u", "root", "-D", "isutomo", "<", "../../sql/seed_isutomo2.sql").Run()
+	//path, _ := exec.LookPath("mysql")
+	//exec.Command(path, "-u", "root", "-D", "isutomo", "<", "../../sql/seed_isutomo2.sql").Run()
+	//defer dbfriend.Close()
+	//rows, _ := dbfriend.Query("SELECT * FROM friends")
+	//var friends []Friend
+	//for rows.Next() {
+	//	f := &Friend{}
+	//	var str string
+	//	rows.Scan(&f.ID, &f.Me, &str)
+	//	f.Friends = strings.Split(str, ",")
 
-	defer dbfriend.Close()
-
-	rows, _ := dbfriend.Query("SELECT * FROM friends")
-
-	var friends []Friend
-	for rows.Next() {
-		f := &Friend{}
-		var str string
-		rows.Scan(&f.ID, &f.Me, &str)
-		f.Friends = strings.Split(str, ",")
-
-		friends = append(friends, *f)
-	}
-	for _, f := range friends {
-		for _, fs := range f.Friends {
-			rclient.SAdd(f.Me, fs)
-		}
-	}
+	//	friends = append(friends, *f)
+	//}
+	//for _, f := range friends {
+	//	for _, fs := range f.Friends {
+	//		rclient.SAdd(f.Me, fs)
+	//	}
+	//}
 
 	re.JSON(w, http.StatusOK, map[string]string{"result": "ok"})
 }
@@ -374,7 +371,7 @@ func followHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	fre := r.FormValue("user")
 	isMember, _ := rclient.SIsMember(userName, fre).Result()
-	if !isMember {
+	if isMember {
 		badRequest(w)
 		return
 	}
