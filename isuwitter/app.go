@@ -25,7 +25,7 @@ import (
 	"net"
 	"os/signal"
 	"syscall"
-	// "os/exec"
+	"os/exec"
 	"github.com/go-redis/redis"
 )
 
@@ -175,6 +175,42 @@ func initializeHandler(w http.ResponseWriter, r *http.Request) {
 	//		rclient.SAdd(f.Me, fs)
 	//	}
 	//}
+
+	re.JSON(w, http.StatusOK, map[string]string{"result": "ok"})
+}
+
+func redInitializeHandler(w http.ResponseWriter, r *http.Request) {
+	_, err := db.Exec(`DELETE FROM tweets WHERE id > 100000`)
+	if err != nil {
+		badRequest(w)
+		return
+	}
+
+	_, err = db.Exec(`DELETE FROM users WHERE id > 1000`)
+	if err != nil {
+		badRequest(w)
+		return
+	}
+	rclient.FlushAll()
+
+	path, _ := exec.LookPath("mysql")
+	exec.Command(path, "-u", "root", "-D", "isutomo", "<", "../../sql/seed_isutomo2.sql").Run()
+	defer dbfriend.Close()
+	rows, _ := dbfriend.Query("SELECT * FROM friends")
+	var friends []Friend
+	for rows.Next() {
+		f := &Friend{}
+		var str string
+		rows.Scan(&f.ID, &f.Me, &str)
+		f.Friends = strings.Split(str, ",")
+
+		friends = append(friends, *f)
+	}
+	for _, f := range friends {
+		for _, fs := range f.Friends {
+			rclient.SAdd(f.Me, fs)
+		}
+	}
 
 	re.JSON(w, http.StatusOK, map[string]string{"result": "ok"})
 }
@@ -730,6 +766,9 @@ func main() {
 	i := r.PathPrefix("/").Subrouter()
 	i.Methods("GET").HandlerFunc(topHandler)
 	i.Methods("POST").HandlerFunc(tweetPostHandler)
+
+	red := r.PathPrefix("/redis").Subrouter()
+	red.Methods("GET").HandlerFunc(redInitializeHandler)
 
 	listener, err := net.Listen("unix", "/tmp/go.sock")
 	if err != nil {
