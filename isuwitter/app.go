@@ -203,7 +203,7 @@ func topHandler(w http.ResponseWriter, r *http.Request) {
 	tweets := make([]*Tweet, 0)
 	for rows.Next() {
 		t := Tweet{}
-		err := rows.Scan(&t.ID, &t.UserID, &t.Text, &t.CreatedAt)
+		err := rows.Scan(&t.ID, &t.UserID, &t.Text, &t.CreatedAt, &t.UserName)
 		if err != nil && err != sql.ErrNoRows {
 			badRequest(w)
 			return
@@ -211,11 +211,11 @@ func topHandler(w http.ResponseWriter, r *http.Request) {
 		t.HTML = htmlify(t.Text)
 		t.Time = t.CreatedAt.Format("2006-01-02 15:04:05")
 
-		t.UserName = getUserName(t.UserID)
-		if t.UserName == "" {
-			badRequest(w)
-			return
-		}
+//		t.UserName = getUserName(t.UserID)
+//		if t.UserName == "" {
+//			badRequest(w)
+//			return
+//		}
 
 		for _, x := range result {
 			if x == t.UserName {
@@ -252,8 +252,9 @@ func tweetPostHandler(w http.ResponseWriter, r *http.Request) {
 
 	session := getSession(w, r)
 	userID, ok := session.Values["user_id"]
+    u := ""
 	if ok {
-		u := getUserName(userID.(int))
+		u = getUserName(userID.(int))
 		if u == "" {
 			http.Redirect(w, r, "/", http.StatusFound)
 			return
@@ -269,7 +270,7 @@ func tweetPostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := db.Exec(`INSERT INTO tweets (user_id, text, created_at) VALUES (?, ?, NOW())`, userID, text)
+	_, err := db.Exec(`INSERT INTO tweets (user_id, text, created_at, user_name) VALUES (?, ?, NOW(), ?)`, userID, text, u)
 	if err != nil {
 		badRequest(w)
 		return
@@ -538,18 +539,18 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	tweets := make([]*Tweet, 0)
 	for rows.Next() {
 		t := Tweet{}
-		err := rows.Scan(&t.ID, &t.UserID, &t.Text, &t.CreatedAt)
+		err := rows.Scan(&t.ID, &t.UserID, &t.Text, &t.CreatedAt, &t.UserName)
 		if err != nil && err != sql.ErrNoRows {
 			badRequest(w)
 			return
 		}
 		t.HTML = htmlify(t.Text)
 		t.Time = t.CreatedAt.Format("2006-01-02 15:04:05")
-		t.UserName = getUserName(t.UserID)
-		if t.UserName == "" {
-			badRequest(w)
-			return
-		}
+//		t.UserName = getUserName(t.UserID)
+//		if t.UserName == "" {
+//			badRequest(w)
+//			return
+//		}
 		if strings.Index(t.HTML, query) != -1 {
 			tweets = append(tweets, &t)
 		}
