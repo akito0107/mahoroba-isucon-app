@@ -81,6 +81,8 @@ func getUserName(id int) string {
 }
 
 func htmlify(tweet string) string {
+	txn := a.StartTransaction("htmlify", nil, nil)
+	defer txn.End()
 	tweet = strings.Replace(tweet, "&", "&amp;", -1)
 	tweet = strings.Replace(tweet, "<", "&lt;", -1)
 	tweet = strings.Replace(tweet, ">", "&gt;", -1)
