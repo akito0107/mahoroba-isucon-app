@@ -103,7 +103,7 @@ func htmlify(tweet string) string {
 	tweet = strings.Replace(tweet, "'", "&apos;", -1)
 	tweet = strings.Replace(tweet, "\"", "&quot;", -1)
 	tweet = reg.ReplaceAllStringFunc(tweet, func(tag string) string {
-		return fmt.Sprintf("<a class=\"hashtag\" href=\"/hashtag/%s\">#%s</a>", tag[1:len(tag)], html.EscapeString(tag[1:len(tag)]))
+		return fmt.Sprintf(`<a class=\"hashtag\" href=\"/hashtag/%s\">#%s</a>`, tag[1:len(tag)], html.EscapeString(tag[1:len(tag)]))
 	})
 	return tweet
 }
@@ -136,6 +136,14 @@ func initializeHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		badRequest(w)
 		return
+	}
+
+	rows, err := db.Query(`SELECT id, text from tweets`)
+	for rows.Next() {
+		t := new(Tweet)
+		rows.Scan(&t.ID, &t.Text)
+		t.Text = htmlify(t.Text)
+		db.Exec(`UPDATE tweets set text = ? where id = ?`, t.Text, t.ID)
 	}
 
 	resp, err := http.Get(fmt.Sprintf("%s/initialize", isutomoEndpoint))
