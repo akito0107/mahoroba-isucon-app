@@ -17,10 +17,10 @@ import (
 	"strings"
 	"time"
 
-    newrelic "github.com/newrelic/go-agent"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
+	newrelic "github.com/newrelic/go-agent"
 	"github.com/unrolled/render"
 )
 
@@ -282,7 +282,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if err == sql.ErrNoRows || user.Password != fmt.Sprintf("%x", sha1.Sum([]byte(user.Salt+r.FormValue("password")))) {
 		session := getSession(w, r)
-		session.Values["flush"] = "ログインエラー"
+		session.Values["flush"] = "繝ｭ繧ｰ繧､繝ｳ繧ｨ繝ｩ繝ｼ"
 		session.Save(r, w)
 		http.Redirect(w, r, "/", http.StatusFound)
 		return
@@ -574,6 +574,9 @@ func js(w http.ResponseWriter, r *http.Request) {
 }
 
 func css(w http.ResponseWriter, r *http.Request) {
+	txn := a.StartTransaction("css", nil, nil)
+	defer txn.End()
+
 	w.Header().Set("Content-Type", "text/css")
 	w.Write(fileRead("./public/css/style.css"))
 }
