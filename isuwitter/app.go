@@ -103,7 +103,7 @@ func htmlify(tweet string) string {
 	tweet = strings.Replace(tweet, "'", "&apos;", -1)
 	tweet = strings.Replace(tweet, "\"", "&quot;", -1)
 	tweet = reg.ReplaceAllStringFunc(tweet, func(tag string) string {
-		return fmt.Sprintf(`<a class=\"hashtag\" href=\"/hashtag/%s\">#%s</a>`, tag[1:len(tag)], html.EscapeString(tag[1:len(tag)]))
+		return fmt.Sprintf("<a class=\"hashtag\" href=\"/hashtag/%s\">#%s</a>", tag[1:len(tag)], html.EscapeString(tag[1:len(tag)]))
 	})
 	return tweet
 }
