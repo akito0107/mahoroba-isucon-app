@@ -101,12 +101,12 @@ func (db *DB) fetchFriend(user string) (*Friend, error) {
 }
 
 func (db *DB) updateFriend(user, friend string) error {
-	rclient.SAdd("friends", user, friend).Result()
+	rclient.SAdd( user, friend).Result()
 	return nil
 }
 
 func (db *DB) deleteFriend(user, friend string) error {
-	rclient.SRem("friends", user, friend).Result()
+	rclient.SRem(user, friend).Result()
 	return nil
 }
 

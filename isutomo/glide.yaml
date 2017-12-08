@@ -4,3 +4,5 @@ import:
 - package: github.com/gorilla/mux
 - package: github.com/newrelic/go-agent
   version: ^1.11.0
+- package: github.com/go-redis/redis
+  version: ^6.7.4
