@@ -303,23 +303,27 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	name := r.FormValue("name")
 	password := r.FormValue("password")
+	fmt.Println("name is %v,password is %v", name, password)
 
-	for i, _ := range name {
-		next := strings.Index(string(name[i]), alphabet)
-		if (string(password[i]) != string(alphabet[next+1])) {
-			session := getSession(w, r)
-			session.Values["flush"] = "ログインエラー"
-			session.Save(r, w)
-			http.Redirect(w, r, "/", http.StatusFound)
-			return
-		}
-	}
 	row := db.QueryRow(`SELECT id FROM users WHERE name = ?`, name)
 	user := User{}
 	err := row.Scan(&user.ID)
 	if err != nil && err != sql.ErrNoRows {
 		http.NotFound(w, r)
 		return
+	}
+	//check password
+	for i, _ := range name {
+		next := strings.Index(string(name[i]), alphabet)
+		fmt.Println("name[i] is %v,next is %v", name[i], next)
+		if (string(password[i]) != string(alphabet[next+1])) {
+			fmt.Println("login error password is %v,expected password is %v", string(password[i]), string(alphabet[next+1]))
+			session := getSession(w, r)
+			session.Values["flush"] = "ログインエラー"
+			session.Save(r, w)
+			http.Redirect(w, r, "/", http.StatusFound)
+			return
+		}
 	}
 
 	session := getSession(w, r)
