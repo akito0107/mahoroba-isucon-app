@@ -22,10 +22,10 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/newrelic/go-agent"
 	"github.com/unrolled/render"
-    "github.com/patrickmn/go-cache"
 	"net"
 	"os/signal"
 	"syscall"
+	"github.com/patrickmn/go-cache"
 )
 
 type Tweet struct {
