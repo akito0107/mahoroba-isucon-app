@@ -185,7 +185,7 @@ func topHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		if err == sql.ErrNoRows {
 			http.NotFound(w, r)
 			return
@@ -197,7 +197,7 @@ func topHandler(w http.ResponseWriter, r *http.Request) {
 
 	result, err := loadFriends(name)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		badRequest(w)
 		return
 	}
@@ -207,7 +207,7 @@ func topHandler(w http.ResponseWriter, r *http.Request) {
 		t := Tweet{}
 		err := rows.Scan(&t.ID, &t.UserID, &t.Text, &t.CreatedAt, &t.UserName)
 		if err != nil && err != sql.ErrNoRows {
-			fmt.Println(err)
+			log.Println(err)
 			badRequest(w)
 			return
 		}
@@ -257,7 +257,6 @@ func tweetPostHandler(w http.ResponseWriter, r *http.Request) {
 	userID, ok := session.Values["user_id"]
     u := ""
 	if ok {
-		u = getUserName(userID.(int))
 		if u == "" {
 			http.Redirect(w, r, "/", http.StatusFound)
 			return
