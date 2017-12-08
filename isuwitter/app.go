@@ -312,12 +312,13 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+
 	//check password
 	for i, _ := range name {
-		next := strings.Index(string(name[i]), alphabet)
-		fmt.Println("name[i] is %v,next is %v", name[i], next)
-		if (string(password[i]) != string(alphabet[next+1])) {
-			fmt.Println("login error password is %v,expected password is %v", string(password[i]), string(alphabet[next+1]))
+		next := strings.Index(alphabet, name[i:i+1])
+		fmt.Println("name[i] is %v,next is %v", name[i:i+1], next)
+		if (password[i:i+1] != alphabet[next+1:next+2]) {
+			fmt.Println("login error password is %v,expected password is %v", password[i:i+1], alphabet[next+1:next+2])
 			session := getSession(w, r)
 			session.Values["flush"] = "ログインエラー"
 			session.Save(r, w)
