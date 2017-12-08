@@ -296,7 +296,6 @@ func tweetPostHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
-var alphabet = "abcdefghijklmnopqrstuvwxyz"
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 	txn := a.StartTransaction("loginHandler", nil, nil)
@@ -319,16 +318,20 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		loginError(w, r)
 		return
 	}
-	for i, _ := range name {
-		next := strings.Index(alphabet, name[i:i+1]) + 1
-		next = int(math.Mod(float64(next), 26))
-		fmt.Println("name[i] is %v,next is %v", name[i:i+1], next)
-		if (password[i:i+1] != alphabet[next:next+1]) {
-			fmt.Println("login error password is %v,expected password is %v", password[i:i+1], alphabet[next:next+1])
+	for i, c := range name {
+		a :=int(c)
+		b :=int(password[i])
+		if!(b-a==1||a-b==25){
 			loginError(w, r)
 			return
 		}
 	}
+		//next := strings.Index(alphabet, name[i:i+1]) + 1
+		//next = int(math.Mod(float64(next), 26))
+		//fmt.Println("name[i] is %v,next is %v", name[i:i+1], next)
+		//if (password[i:i+1] != alphabet[next:next+1]) {
+		//	fmt.Println("login error password is %v,expected password is %v", password[i:i+1], alphabet[next:next+1])
+		//}
 
 	session := getSession(w, r)
 	session.Values["user_id"] = user.ID
