@@ -136,7 +136,6 @@ func getUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Write(friendJSON)
-
 }
 
 func postUserHandler(w http.ResponseWriter, r *http.Request) {
@@ -332,7 +331,6 @@ func NewRouter() *mux.Router {
 	router.Methods(http.MethodGet).Path("/{me}").HandlerFunc(getUserHandler)
 	router.Methods(http.MethodPost).Path("/{me}").HandlerFunc(postUserHandler)
 	router.Methods(http.MethodDelete).Path("/{me}").HandlerFunc(deleteUserHandler)
-
 	return router
 }
 
