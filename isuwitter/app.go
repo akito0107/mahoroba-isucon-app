@@ -314,21 +314,29 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//check password
+	if len(name) != len(password) {
+		loginError(w, r)
+		return
+	}
 	for i, _ := range name {
 		next := strings.Index(alphabet, name[i:i+1])
 		fmt.Println("name[i] is %v,next is %v", name[i:i+1], next)
 		if (password[i:i+1] != alphabet[next+1:next+2]) {
 			fmt.Println("login error password is %v,expected password is %v", password[i:i+1], alphabet[next+1:next+2])
-			session := getSession(w, r)
-			session.Values["flush"] = "ログインエラー"
-			session.Save(r, w)
-			http.Redirect(w, r, "/", http.StatusFound)
+			loginError(w, r)
 			return
 		}
 	}
 
 	session := getSession(w, r)
 	session.Values["user_id"] = user.ID
+	session.Save(r, w)
+	http.Redirect(w, r, "/", http.StatusFound)
+}
+
+func loginError(w http.ResponseWriter, r *http.Request) {
+	session := getSession(w, r)
+	session.Values["flush"] = "ログインエラー"
 	session.Save(r, w)
 	http.Redirect(w, r, "/", http.StatusFound)
 }
