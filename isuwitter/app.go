@@ -16,12 +16,14 @@ import (
 	"regexp"
 	"strings"
 	"time"
+    "strconv"
 
     newrelic "github.com/newrelic/go-agent"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/unrolled/render"
+    "github.com/patrickmn/go-cache"
 )
 
 type Tweet struct {
@@ -55,6 +57,7 @@ var (
 	db             *sql.DB
 	errInvalidUser = errors.New("Invalid User")
 	a              newrelic.Application
+    c              = cache.New(3*time.Minute, 5*time.Minute)
 )
 
 func getuserID(name string) int {
@@ -72,6 +75,12 @@ func getuserID(name string) int {
 func getUserName(id int) string {
 	txn := a.StartTransaction("getUserName", nil, nil)
 	defer txn.End()
+    key := strconv.Itoa(id)
+
+    name, found := c.Get(key)
+    if found {
+        return name.(string)
+    }
 
 	row := db.QueryRow(`SELECT name FROM users WHERE id = ?`, id)
 	user := User{}
@@ -79,6 +88,7 @@ func getUserName(id int) string {
 	if err != nil {
 		return ""
 	}
+    c.Set(key, user.Name, cache.DefaultExpiration)
 	return user.Name
 }
 
