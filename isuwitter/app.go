@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+    newrelic "github.com/newrelic/go-agent"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
@@ -126,8 +127,8 @@ func initializeHandler(w http.ResponseWriter, r *http.Request) {
 	re.JSON(w, http.StatusOK, map[string]string{"result": "ok"})
 }
 
-func topHandler(a newrelic.Application, w http.ResponseWriter, r *http.Request) {
-	txn := a.StartTransaction("topHandler", ResponseWriter, Request)
+func topHandler(w http.ResponseWriter, r *http.Request) {
+	txn := a.StartTransaction("topHandler", nil, nil)
 	defer txn.End()
 
 	var name string
@@ -224,8 +225,8 @@ func topHandler(a newrelic.Application, w http.ResponseWriter, r *http.Request) 
 	})
 }
 
-func tweetPostHandler(a newrelic.Application, w http.ResponseWriter, r *http.Request) {
-	txn := a.StartTransaction("tweetPostHandler", ResponseWriter, Request)
+func tweetPostHandler(w http.ResponseWriter, r *http.Request) {
+	txn := a.StartTransaction("tweetPostHandler", nil, nil)
 	defer txn.End()
 
 	session := getSession(w, r)
@@ -256,8 +257,8 @@ func tweetPostHandler(a newrelic.Application, w http.ResponseWriter, r *http.Req
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
-func loginHandler(a newrelic.Application, w http.ResponseWriter, r *http.Request) {
-	txn := a.StartTransaction("loginHandler", ResponseWriter, Request)
+func loginHandler(w http.ResponseWriter, r *http.Request) {
+	txn := a.StartTransaction("loginHandler", nil, nil)
 	defer txn.End()
 
 	name := r.FormValue("name")
@@ -281,8 +282,8 @@ func loginHandler(a newrelic.Application, w http.ResponseWriter, r *http.Request
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
-func logoutHandler(a newrelic.Application, w http.ResponseWriter, r *http.Request) {
-	txn := a.StartTransaction("logoutHandler", ResponseWriter, Request)
+func logoutHandler(w http.ResponseWriter, r *http.Request) {
+	txn := a.StartTransaction("logoutHandler", nil, nil)
 	defer txn.End()
 
 	session := getSession(w, r)
@@ -291,8 +292,8 @@ func logoutHandler(a newrelic.Application, w http.ResponseWriter, r *http.Reques
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
-func followHandler(a newrelic.Application, w http.ResponseWriter, r *http.Request) {
-	txn := a.StartTransaction("followHandler", ResponseWriter, Request)
+func followHandler(w http.ResponseWriter, r *http.Request) {
+	txn := a.StartTransaction("followHandler", nil, nil)
 	defer txn.End()
 
 	var userName string
@@ -328,8 +329,8 @@ func followHandler(a newrelic.Application, w http.ResponseWriter, r *http.Reques
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
-func unfollowHandler(a newrelic.Application, w http.ResponseWriter, r *http.Request) {
-	txn := a.StartTransaction("unfollowHandler", ResponseWriter, Request)
+func unfollowHandler(w http.ResponseWriter, r *http.Request) {
+	txn := a.StartTransaction("unfollowHandler", nil, nil)
 	defer txn.End()
 
 	var userName string
@@ -380,8 +381,8 @@ func badRequest(w http.ResponseWriter) {
 	http.Error(w, http.StatusText(code), code)
 }
 
-func userHandler(a newrelic.Application, w http.ResponseWriter, r *http.Request) {
-	txn := a.StartTransaction("userHandler", ResponseWriter, Request)
+func userHandler(w http.ResponseWriter, r *http.Request) {
+	txn := a.StartTransaction("userHandler", nil, nil)
 	defer txn.End()
 
 	var name string
@@ -475,8 +476,8 @@ func userHandler(a newrelic.Application, w http.ResponseWriter, r *http.Request)
 	})
 }
 
-func searchHandler(a newrelic.Application, w http.ResponseWriter, r *http.Request) {
-	txn := a.StartTransaction("searchHandler", ResponseWriter, Request)
+func searchHandler(w http.ResponseWriter, r *http.Request) {
+	txn := a.StartTransaction("searchHandler", nil, nil)
 	defer txn.End()
 
 	var name string
@@ -593,11 +594,11 @@ func fileRead(fp string) []byte {
 func main() {
 	// NewRelic
 	cfg := newrelic.NewConfig("ISUCONApp", "31897725152cfdc8c8def14ebbabc1fbe4e8f050")
-	var err error
-	a, err = newrelic.NewApplication(cfg)
+	var e error
+	a, e = newrelic.NewApplication(cfg)
 
-	if nil != err {
-		fmt.Println(err)
+	if nil != e {
+		fmt.Println(e)
 		os.Exit(1)
 	}
 

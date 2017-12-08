@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"strings"
 
+    newrelic "github.com/newrelic/go-agent"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 )
@@ -31,8 +32,10 @@ type DB struct {
 	Conn *sql.DB
 }
 
-var conn *DB
-
+var (
+    conn *DB
+    a    newrelic.Application
+)
 func (db *DB) initEnvs() error {
 
 	db.Host = os.Getenv("ISUTOMO_DB_HOST")
@@ -109,6 +112,8 @@ func (friend *Friend) getFriends() []string {
 }
 
 func getUserHandler(w http.ResponseWriter, r *http.Request) {
+    txn := a.StartTransaction("getUserHandler", nil, nil)
+    defer txn.End()
 
 	me := mux.Vars(r)["me"]
 
@@ -135,6 +140,8 @@ func getUserHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func postUserHandler(w http.ResponseWriter, r *http.Request) {
+    txn := a.StartTransaction("postUser", nil, nil)
+    defer txn.End()
 
 	me := mux.Vars(r)["me"]
 
@@ -193,6 +200,8 @@ func postUserHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func deleteUserHandler(w http.ResponseWriter, r *http.Request) {
+    txn := a.StartTransaction("deleteUser", nil, nil)
+    defer txn.End()
 
 	me := mux.Vars(r)["me"]
 
@@ -328,6 +337,13 @@ func NewRouter() *mux.Router {
 }
 
 func main() {
+    cfg := newrelic.NewConfig("ISUCONApp", "31897725152cfdc8c8def14ebbabc1fbe4e8f050")
+    var e error
+    a, e = newrelic.NewApplication(cfg)
+    if nil != e {
+        fmt.Println(e)
+        os.Exit(1)
+    }
 
 	conn = new(DB)
 

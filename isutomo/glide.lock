@@ -1,10 +1,23 @@
-hash: 786bbaf361d98a50fd02ece1b264eb99e881e2931470a7e57a8652e6a0dbcda0
-updated: 2016-12-26T15:35:56.931185464+09:00
+hash: 32269611f06c709f4bed7c91f1098a447fd5c5de7f44aeab7281dc65bd5cbadd
+updated: 2017-12-08T13:54:51.534583933+09:00
 imports:
 - name: github.com/go-sql-driver/mysql
-  version: 4ac31a97ccff97de60ba3c630bfb4733c1bb6d0e
+  version: 9181e3a86a19bacd63e68d43ae8b7b36320d8092
 - name: github.com/gorilla/context
   version: 08b5f424b9271eedf6f9f0ce86cb9396ed337a42
 - name: github.com/gorilla/mux
-  version: cf79e51a62d8219d52060dfc1b4e810414ba2d15
+  version: 7904d2e42e7ebbdb4a6eb3e57eb201b11df25c57
+- name: github.com/newrelic/go-agent
+  version: f5bce3387232559bcbe6a5f8227c4bf508dac1ba
+  subpackages:
+  - internal
+  - internal/cat
+  - internal/jsonx
+  - internal/logger
+  - internal/sysinfo
+  - internal/utilization
+- name: google.golang.org/appengine
+  version: 9d8544a6b2c7df9cff240fcf92d7b2f59bc13416
+  subpackages:
+  - cloudsql
 testImports: []
