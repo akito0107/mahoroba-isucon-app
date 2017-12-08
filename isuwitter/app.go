@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"crypto/sha1"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -16,12 +15,12 @@ import (
 	"regexp"
 	"strings"
 	"time"
-    "strconv"
+	"strconv"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
-	newrelic "github.com/newrelic/go-agent"
+	"github.com/newrelic/go-agent"
 	"github.com/unrolled/render"
     "github.com/patrickmn/go-cache"
 	"net"
@@ -60,7 +59,7 @@ var (
 	db             *sql.DB
 	errInvalidUser = errors.New("Invalid User")
 	a              newrelic.Application
-    c              = cache.New(3*time.Minute, 5*time.Minute)
+	c              = cache.New(3*time.Minute, 5*time.Minute)
 )
 
 func getuserID(name string) int {
@@ -78,12 +77,12 @@ func getuserID(name string) int {
 func getUserName(id int) string {
 	txn := a.StartTransaction("getUserName", nil, nil)
 	defer txn.End()
-    key := strconv.Itoa(id)
+	key := strconv.Itoa(id)
 
-    name, found := c.Get(key)
-    if found {
-        return name.(string)
-    }
+	name, found := c.Get(key)
+	if found {
+		return name.(string)
+	}
 
 	row := db.QueryRow(`SELECT name FROM users WHERE id = ?`, id)
 	user := User{}
@@ -91,7 +90,7 @@ func getUserName(id int) string {
 	if err != nil {
 		return ""
 	}
-    c.Set(key, user.Name, cache.DefaultExpiration)
+	c.Set(key, user.Name, cache.DefaultExpiration)
 	return user.Name
 }
 
@@ -296,25 +295,33 @@ func tweetPostHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
+var alphabet = "abcdefghijklmnopqrstuvwxyz"
+
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 	txn := a.StartTransaction("loginHandler", nil, nil)
 	defer txn.End()
 
 	name := r.FormValue("name")
-	row := db.QueryRow(`SELECT * FROM users WHERE name = ?`, name)
+	password := r.FormValue("password")
+
+	for i, _ := range name {
+		next := strings.Index(string(name[i]), alphabet)
+		if (string(password[i]) != string(alphabet[next+1])) {
+			session := getSession(w, r)
+			session.Values["flush"] = "ログインエラー"
+			session.Save(r, w)
+			http.Redirect(w, r, "/", http.StatusFound)
+			return
+		}
+	}
+	row := db.QueryRow(`SELECT id FROM users WHERE name = ?`, name)
 	user := User{}
-	err := row.Scan(&user.ID, &user.Name, &user.Salt, &user.Password)
+	err := row.Scan(&user.ID)
 	if err != nil && err != sql.ErrNoRows {
 		http.NotFound(w, r)
 		return
 	}
-	if err == sql.ErrNoRows || user.Password != fmt.Sprintf("%x", sha1.Sum([]byte(user.Salt+r.FormValue("password")))) {
-		session := getSession(w, r)
-		session.Values["flush"] = "ログインエラー"
-		session.Save(r, w)
-		http.Redirect(w, r, "/", http.StatusFound)
-		return
-	}
+
 	session := getSession(w, r)
 	session.Values["user_id"] = user.ID
 	session.Save(r, w)
