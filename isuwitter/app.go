@@ -282,7 +282,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if err == sql.ErrNoRows || user.Password != fmt.Sprintf("%x", sha1.Sum([]byte(user.Salt+r.FormValue("password")))) {
 		session := getSession(w, r)
-		session.Values["flush"] = "繝ｭ繧ｰ繧､繝ｳ繧ｨ繝ｩ繝ｼ"
+		session.Values["flush"] = "ログインエラー"
 		session.Save(r, w)
 		http.Redirect(w, r, "/", http.StatusFound)
 		return
