@@ -58,6 +58,8 @@ var (
 )
 
 func getuserID(name string) int {
+	txn := a.StartTransaction("getUserID", nil, nil)
+	defer txn.End()
 	row := db.QueryRow(`SELECT id FROM users WHERE name = ?`, name)
 	user := User{}
 	err := row.Scan(&user.ID)
@@ -96,6 +98,9 @@ func htmlify(tweet string) string {
 }
 
 func loadFriends(name string) ([]string, error) {
+	txn := a.StartTransaction("loadFriends", nil, nil)
+	defer txn.End()
+
 	resp, err := http.DefaultClient.Get(pathURIEscape(fmt.Sprintf("%s/%s", isutomoEndpoint, name)))
 	if err != nil {
 		return nil, err
