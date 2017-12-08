@@ -26,6 +26,7 @@ import (
 	"os/signal"
 	"syscall"
 	"github.com/patrickmn/go-cache"
+	math "math"
 )
 
 type Tweet struct {
@@ -320,6 +321,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	for i, _ := range name {
 		next := strings.Index(alphabet, name[i:i+1])
+		next = int(math.Mod(26,float64(next)))
 		fmt.Println("name[i] is %v,next is %v", name[i:i+1], next)
 		if (password[i:i+1] != alphabet[next+1:next+2]) {
 			fmt.Println("login error password is %v,expected password is %v", password[i:i+1], alphabet[next+1:next+2])
