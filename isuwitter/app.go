@@ -138,13 +138,13 @@ func initializeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.Query(`SELECT id, text from tweets`)
-	for rows.Next() {
-		t := new(Tweet)
-		rows.Scan(&t.ID, &t.Text)
-		t.Text = htmlify(t.Text)
-		db.Exec(`UPDATE tweets set text = ? where id = ?`, t.Text, t.ID)
-	}
+	//rows, err := db.Query(`SELECT id, text from tweets`)
+	//for rows.Next() {
+	//	t := new(Tweet)
+	//	rows.Scan(&t.ID, &t.Text)
+	//	t.Text = htmlify(t.Text)
+	//	db.Exec(`UPDATE tweets set text = ? where id = ?`, t.Text, t.ID)
+	//}
 
 	resp, err := http.Get(fmt.Sprintf("%s/initialize", isutomoEndpoint))
 	if err != nil {
