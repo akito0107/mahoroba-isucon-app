@@ -24,6 +24,9 @@ import (
 	newrelic "github.com/newrelic/go-agent"
 	"github.com/unrolled/render"
     "github.com/patrickmn/go-cache"
+	"net"
+	"os/signal"
+	"syscall"
 )
 
 type Tweet struct {
@@ -714,5 +717,28 @@ func main() {
 	i.Methods("GET").HandlerFunc(topHandler)
 	i.Methods("POST").HandlerFunc(tweetPostHandler)
 
-	log.Fatal(http.ListenAndServe(":8080", r))
+	listener, err := net.Listen("unix", "/tmp/go.sock")
+	if err != nil {
+		log.Fatalf("error: %v", err)
+	}
+	defer func() {
+		if err := listener.Close(); err != nil {
+			log.Printf("error: %v", err)
+		}
+	}()
+	shutdown(listener)
+
+	log.Fatal(http.Serve(listener, r))
+}
+
+func shutdown(listener net.Listener) {
+	c := make(chan os.Signal, 2)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		if err := listener.Close(); err != nil {
+			log.Printf("error: %v", err)
+		}
+		os.Exit(1)
+	}()
 }
