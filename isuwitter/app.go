@@ -746,7 +746,8 @@ func main() {
 		},
 	})
 	rclient = redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
+		Network: "unix",
+		Addr:     "/tmp/redis.sock",
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
