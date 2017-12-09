@@ -742,6 +742,7 @@ func main() {
 
 	r := mux.NewRouter()
 	r.HandleFunc("/initialize", initializeHandler).Methods("GET")
+    r.HandleFunc("/redis", redInitializeHandler).Methods("GET")
 
 	l := r.PathPrefix("/login").Subrouter()
 	l.Methods("POST").HandlerFunc(loginHandler)
@@ -766,9 +767,6 @@ func main() {
 	i := r.PathPrefix("/").Subrouter()
 	i.Methods("GET").HandlerFunc(topHandler)
 	i.Methods("POST").HandlerFunc(tweetPostHandler)
-
-	red := r.PathPrefix("/redis").Subrouter()
-	red.Methods("GET").HandlerFunc(redInitializeHandler)
 
 	listener, err := net.Listen("unix", "/tmp/go.sock")
 	if err != nil {
