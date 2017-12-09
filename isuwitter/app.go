@@ -19,7 +19,6 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
-	newrelic "github.com/newrelic/go-agent"
 	"github.com/unrolled/render"
     "github.com/patrickmn/go-cache"
 	"net"
@@ -66,14 +65,12 @@ var (
 	db             *sql.DB
 	dbfriend             *sql.DB
 	errInvalidUser = errors.New("Invalid User")
-	a              newrelic.Application
+	// a              newrelic.Application
     c              = cache.New(3*time.Minute, 5*time.Minute)
 	rclient *redis.Client
 )
 
 func getuserID(name string) int {
-	txn := a.StartTransaction("getUserID", nil, nil)
-	defer txn.End()
 	row := db.QueryRow(`SELECT id FROM users WHERE name = ?`, name)
 	user := User{}
 	err := row.Scan(&user.ID)
@@ -84,8 +81,6 @@ func getuserID(name string) int {
 }
 
 func getUserName(id int) string {
-	txn := a.StartTransaction("getUserName", nil, nil)
-	defer txn.End()
     key := strconv.Itoa(id)
 
     name, found := c.Get(key)
@@ -106,8 +101,6 @@ func getUserName(id int) string {
 var reg = regexp.MustCompile("#(\\S+)(\\s|$)")
 
 func htmlify(tweet string) string {
-	txn := a.StartTransaction("htmlify", nil, nil)
-	defer txn.End()
 	tweet = strings.Replace(tweet, "&", "&amp;", -1)
 	tweet = strings.Replace(tweet, "<", "&lt;", -1)
 	tweet = strings.Replace(tweet, ">", "&gt;", -1)
@@ -120,8 +113,6 @@ func htmlify(tweet string) string {
 }
 
 func loadFriends(name string) ([]string, error) {
-	txn := a.StartTransaction("loadFriends", nil, nil)
-	defer txn.End()
 
 	//resp, err := http.DefaultClient.Get(pathURIEscape(fmt.Sprintf("%s/%s", isutomoEndpoint, name)))
 	//if err != nil {
@@ -226,8 +217,6 @@ func redInitializeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func topHandler(w http.ResponseWriter, r *http.Request) {
-	txn := a.StartTransaction("topHandler", nil, nil)
-	defer txn.End()
 
 	var name string
 	session := getSession(w, r)
@@ -328,8 +317,6 @@ func topHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func tweetPostHandler(w http.ResponseWriter, r *http.Request) {
-	txn := a.StartTransaction("tweetPostHandler", nil, nil)
-	defer txn.End()
 
 	session := getSession(w, r)
 	userID, ok := session.Values["user_id"]
@@ -363,8 +350,6 @@ func tweetPostHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
-	txn := a.StartTransaction("loginHandler", nil, nil)
-	defer txn.End()
 
 	name := r.FormValue("name")
 	row := db.QueryRow(`SELECT * FROM users WHERE name = ?`, name)
@@ -388,8 +373,6 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
-	txn := a.StartTransaction("logoutHandler", nil, nil)
-	defer txn.End()
 
 	session := getSession(w, r)
 	session.Options = &sessions.Options{MaxAge: -1}
@@ -398,8 +381,6 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func followHandler(w http.ResponseWriter, r *http.Request) {
-	txn := a.StartTransaction("followHandler", nil, nil)
-	defer txn.End()
 
 	var userName string
 	session := getSession(w, r)
@@ -427,8 +408,6 @@ func followHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func unfollowHandler(w http.ResponseWriter, r *http.Request) {
-	txn := a.StartTransaction("unfollowHandler", nil, nil)
-	defer txn.End()
 
 	var userName string
 	session := getSession(w, r)
@@ -456,8 +435,6 @@ func unfollowHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func getSession(w http.ResponseWriter, r *http.Request) *sessions.Session {
-	txn := a.StartTransaction("getSession", nil, nil)
-	defer txn.End()
 	session, _ := store.Get(r, sessionName)
 
 	return session
@@ -473,8 +450,6 @@ func badRequest(w http.ResponseWriter) {
 }
 
 func userHandler(w http.ResponseWriter, r *http.Request) {
-	txn := a.StartTransaction("userHandler", nil, nil)
-	defer txn.End()
 
 	var name string
 	session := getSession(w, r)
@@ -570,8 +545,6 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func searchHandler(w http.ResponseWriter, r *http.Request) {
-	txn := a.StartTransaction("searchHandler", nil, nil)
-	defer txn.End()
 
 	var name string
 	session := getSession(w, r)
@@ -655,8 +628,6 @@ func js(w http.ResponseWriter, r *http.Request) {
 }
 
 func css(w http.ResponseWriter, r *http.Request) {
-	txn := a.StartTransaction("css", nil, nil)
-	defer txn.End()
 
 	w.Header().Set("Content-Type", "text/css")
 	w.Write(fileRead("./public/css/style.css"))
@@ -689,16 +660,6 @@ func fileRead(fp string) []byte {
 }
 
 func main() {
-	// NewRelic
-	cfg := newrelic.NewConfig("ISUCONApp", "31897725152cfdc8c8def14ebbabc1fbe4e8f050")
-	var e error
-	a, e = newrelic.NewApplication(cfg)
-
-	if nil != e {
-		fmt.Println(e)
-		os.Exit(1)
-	}
-
 	host := os.Getenv("ISUWITTER_DB_HOST")
 	if host == "" {
 		host = "localhost"
