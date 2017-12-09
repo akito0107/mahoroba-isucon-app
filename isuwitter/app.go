@@ -179,6 +179,16 @@ func initializeHandler(w http.ResponseWriter, r *http.Request) {
 	re.JSON(w, http.StatusOK, map[string]string{"result": "ok"})
 }
 
+func cacheHandler(w http.ResponseWriter, r *http.Request) {
+    rows, _ := db.Query("SELECT id, name FROM users")
+    for rows.Next() {
+        id   := 0
+        name := ""
+        rows.Scan(&id, &name)
+        c.Set(strconv.Itoa(id), name, cache.DefaultExpiration)
+    }
+    re.JSON(w, http.StatusOK, map[string]string{"result": "ok"})
+}
 func redInitializeHandler(w http.ResponseWriter, r *http.Request) {
 	_, err := db.Exec(`DELETE FROM tweets WHERE id > 100000`)
 	if err != nil {
@@ -478,11 +488,12 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 	user := mux.Vars(r)["user"]
 	mypage := user == name
 
-	userID := getuserID(user)
-	if userID == 0 {
-		http.NotFound(w, r)
-		return
-	}
+//	userID := getuserID(user)
+//	if userID == 0 {
+//		http.NotFound(w, r)
+//		return
+//	}
+    userID := session.Values["user_id"]
 
 	isFriend := false
 	if name != "" {
@@ -743,6 +754,9 @@ func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/initialize", initializeHandler).Methods("GET")
     r.HandleFunc("/redis", redInitializeHandler).Methods("GET")
+
+    g := r.PathPrefix("/cacheinit").Subrouter()
+    g.Methods("GET").HandlerFunc(cacheHandler)
 
 	l := r.PathPrefix("/login").Subrouter()
 	l.Methods("POST").HandlerFunc(loginHandler)
