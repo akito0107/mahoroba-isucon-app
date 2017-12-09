@@ -245,9 +245,9 @@ func topHandler(w http.ResponseWriter, r *http.Request) {
 	var rows *sql.Rows
 	var err error
 	if until == "" {
-		rows, err = db.Query(`SELECT * FROM tweets ORDER BY created_at DESC LIMIT 130`)
+		rows, err = db.Query(`SELECT text, created_at, user_name FROM tweets ORDER BY created_at DESC LIMIT 130`)
 	} else {
-		rows, err = db.Query(`SELECT * FROM tweets WHERE created_at < ? ORDER BY created_at DESC LIMIT 130`, until)
+		rows, err = db.Query(`SELECT text, created_at, user_name FROM tweets WHERE created_at < ? ORDER BY created_at DESC LIMIT 130`, until)
 	}
 
 	if err != nil {
@@ -271,7 +271,7 @@ func topHandler(w http.ResponseWriter, r *http.Request) {
 	tweets := make([]*Tweet, 0)
 	for rows.Next() {
 		t := Tweet{}
-		err := rows.Scan(&t.ID, &t.UserID, &t.Text, &t.CreatedAt, &t.UserName)
+		err := rows.Scan(&t.Text, &t.CreatedAt, &t.UserName)
 		if err != nil && err != sql.ErrNoRows {
 			log.Println(err)
 			badRequest(w)
@@ -490,9 +490,9 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 	var rows *sql.Rows
 	var err error
 	if until == "" {
-		rows, err = db.Query(`SELECT * FROM tweets WHERE user_id = ? ORDER BY created_at DESC LIMIT 130`, userID)
+		rows, err = db.Query(`SELECT text, created_at FROM tweets WHERE user_id = ? ORDER BY created_at DESC LIMIT 130`, userID)
 	} else {
-		rows, err = db.Query(`SELECT * FROM tweets WHERE user_id = ? AND created_at < ? ORDER BY created_at DESC LIMIT 130`, userID, until)
+		rows, err = db.Query(`SELECT text, created_at FROM tweets WHERE user_id = ? AND created_at < ? ORDER BY created_at DESC LIMIT 130`, userID, until)
 	}
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -507,7 +507,7 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 	tweets := make([]*Tweet, 0)
 	for rows.Next() {
 		t := Tweet{}
-		err := rows.Scan(&t.ID, &t.UserID, &t.Text, &t.CreatedAt, &t.UserName)
+		err := rows.Scan(&t.Text, &t.CreatedAt)
 		if err != nil && err != sql.ErrNoRows {
 			badRequest(w)
 			return
@@ -564,9 +564,9 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	var rows *sql.Rows
 	var err error
 	if until == "" {
-		rows, err = db.Query(`SELECT * FROM tweets ORDER BY created_at DESC LIMIT 130`)
+		rows, err = db.Query(`SELECT text, created_at, user_name FROM tweets ORDER BY created_at DESC LIMIT 130`)
 	} else {
-		rows, err = db.Query(`SELECT * FROM tweets WHERE created_at < ? ORDER BY created_at DESC LIMIT 130`, until)
+		rows, err = db.Query(`SELECT text, created_at, user_name FROM tweets WHERE created_at < ? ORDER BY created_at DESC LIMIT 130`, until)
 	}
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -581,7 +581,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	tweets := make([]*Tweet, 0)
 	for rows.Next() {
 		t := Tweet{}
-		err := rows.Scan(&t.ID, &t.UserID, &t.Text, &t.CreatedAt, &t.UserName)
+		err := rows.Scan(&t.Text, &t.CreatedAt, &t.UserName)
 		if err != nil && err != sql.ErrNoRows {
 			badRequest(w)
 			return
