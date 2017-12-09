@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/sha1"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -15,6 +14,7 @@ import (
 	"strings"
 	"time"
     "strconv"
+    "runtime"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
@@ -177,9 +177,20 @@ func cacheHandler(w http.ResponseWriter, r *http.Request) {
         name := ""
         rows.Scan(&id, &name)
         c.Set(strconv.Itoa(id), name, cache.DefaultExpiration)
+        _, err := db.Exec(`UPDATE users set password=? WHERE id=?`, rot1(name), id)
+        if err != nil {}
     }
     re.JSON(w, http.StatusOK, map[string]string{"result": "ok"})
 }
+
+func rot1(s string) string {
+    r := ""
+    for _, c := range s {
+         r = fmt.Sprintf("%s%c", r, rune((int(c) - int('a') + 1) % 26 + int('a')))
+    }
+    return r
+}
+
 func redInitializeHandler(w http.ResponseWriter, r *http.Request) {
 	_, err := db.Exec(`DELETE FROM tweets WHERE id > 100000`)
 	if err != nil {
@@ -245,9 +256,9 @@ func topHandler(w http.ResponseWriter, r *http.Request) {
 	var rows *sql.Rows
 	var err error
 	if until == "" {
-		rows, err = db.Query(`SELECT text, created_at, user_name FROM tweets ORDER BY created_at DESC LIMIT 130`)
+		rows, err = db.Query(`SELECT text, created_at, user_name FROM tweets ORDER BY created_at DESC LIMIT 131`)
 	} else {
-		rows, err = db.Query(`SELECT text, created_at, user_name FROM tweets WHERE created_at < ? ORDER BY created_at DESC LIMIT 130`, until)
+		rows, err = db.Query(`SELECT text, created_at, user_name FROM tweets WHERE created_at < ? ORDER BY created_at DESC LIMIT 131`, until)
 	}
 
 	if err != nil {
@@ -352,14 +363,16 @@ func tweetPostHandler(w http.ResponseWriter, r *http.Request) {
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	name := r.FormValue("name")
-	row := db.QueryRow(`SELECT * FROM users WHERE name = ?`, name)
+	//row := db.QueryRow(`SELECT * FROM users WHERE name = ?`, name)
+	row := db.QueryRow(`SELECT id, password FROM users WHERE name = ?`, name)
 	user := User{}
-	err := row.Scan(&user.ID, &user.Name, &user.Salt, &user.Password)
+    err := row.Scan(&user.ID, &user.Password)
 	if err != nil && err != sql.ErrNoRows {
 		http.NotFound(w, r)
 		return
 	}
-	if err == sql.ErrNoRows || user.Password != fmt.Sprintf("%x", sha1.Sum([]byte(user.Salt+r.FormValue("password")))) {
+//	if err == sql.ErrNoRows || user.Password != fmt.Sprintf("%x", sha1.Sum([]byte(user.Salt+r.FormValue("password")))) {
+	if err == sql.ErrNoRows || user.Password != r.FormValue("password") {
 		session := getSession(w, r)
 		session.Values["flush"] = "ログインエラー"
 		session.Save(r, w)
@@ -490,9 +503,9 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 	var rows *sql.Rows
 	var err error
 	if until == "" {
-		rows, err = db.Query(`SELECT text, created_at FROM tweets WHERE user_id = ? ORDER BY created_at DESC LIMIT 130`, userID)
+		rows, err = db.Query(`SELECT text, created_at FROM tweets WHERE user_id = ? ORDER BY created_at DESC LIMIT 131`, userID)
 	} else {
-		rows, err = db.Query(`SELECT text, created_at FROM tweets WHERE user_id = ? AND created_at < ? ORDER BY created_at DESC LIMIT 130`, userID, until)
+		rows, err = db.Query(`SELECT text, created_at FROM tweets WHERE user_id = ? AND created_at < ? ORDER BY created_at DESC LIMIT 131`, userID, until)
 	}
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -564,9 +577,9 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	var rows *sql.Rows
 	var err error
 	if until == "" {
-		rows, err = db.Query(`SELECT text, created_at, user_name FROM tweets ORDER BY created_at DESC LIMIT 130`)
+		rows, err = db.Query(`SELECT text, created_at, user_name FROM tweets ORDER BY created_at DESC LIMIT 131`)
 	} else {
-		rows, err = db.Query(`SELECT text, created_at, user_name FROM tweets WHERE created_at < ? ORDER BY created_at DESC LIMIT 130`, until)
+		rows, err = db.Query(`SELECT text, created_at, user_name FROM tweets WHERE created_at < ? ORDER BY created_at DESC LIMIT 131`, until)
 	}
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -660,6 +673,8 @@ func fileRead(fp string) []byte {
 }
 
 func main() {
+
+    runtime.GOMAXPROCS(6)
 	host := os.Getenv("ISUWITTER_DB_HOST")
 	if host == "" {
 		host = "localhost"
@@ -680,8 +695,8 @@ func main() {
 
 	var err error
 	db, err = sql.Open("mysql", fmt.Sprintf(
-		"%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&loc=Local&parseTime=true",
-		user, password, host, port, dbname,
+		"%s:%s@unix(/var/lib/mysql/mysql.sock)/%s?charset=utf8mb4&loc=Local&parseTime=true",
+		user, password, dbname,
 	))
 	db.SetMaxIdleConns(150)
 
@@ -724,8 +739,8 @@ func main() {
 	l.Methods("POST").HandlerFunc(loginHandler)
 	r.HandleFunc("/logout", logoutHandler)
 
-	r.PathPrefix("/css/style.css").HandlerFunc(css)
-	r.PathPrefix("/js/script.js").HandlerFunc(js)
+	//r.PathPrefix("/css/style.css").HandlerFunc(css)
+	//r.PathPrefix("/js/script.js").HandlerFunc(js)
 
 	s := r.PathPrefix("/search").Subrouter()
 	s.Methods("GET").HandlerFunc(searchHandler)
