@@ -1,6 +1,14 @@
-hash: 276e0c87b2753fa7ef88a55fb1e72982628e97af5bd01134a32586bf7a82c6c7
-updated: 2017-12-08T13:54:02.985887153+09:00
+hash: 91ec7c60d1fa6884442446d55bf639f8a070d071ad4ffd74bf04e8577050059d
+updated: 2017-12-09T01:49:07.620017597+09:00
 imports:
+- name: github.com/go-redis/redis
+  version: e5e021257bfc6d5fbf0beac33e30194311fb189f
+  subpackages:
+  - internal
+  - internal/consistenthash
+  - internal/hashtag
+  - internal/pool
+  - internal/proto
 - name: github.com/go-sql-driver/mysql
   version: 9181e3a86a19bacd63e68d43ae8b7b36320d8092
 - name: github.com/gorilla/context
@@ -20,6 +28,8 @@ imports:
   - internal/logger
   - internal/sysinfo
   - internal/utilization
+- name: github.com/patrickmn/go-cache
+  version: a3647f8e31d79543b2d0f0ae2fe5c379d72cedc0
 - name: github.com/unrolled/render
   version: 65450fb6b2d3595beca39f969c411db8f8d5c806
 - name: google.golang.org/appengine

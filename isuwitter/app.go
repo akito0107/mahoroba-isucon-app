@@ -1,10 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"crypto/sha1"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"html"
@@ -27,6 +25,8 @@ import (
 	"net"
 	"os/signal"
 	"syscall"
+	"os/exec"
+	"github.com/go-redis/redis"
 )
 
 type Tweet struct {
@@ -38,6 +38,12 @@ type Tweet struct {
 	UserName string
 	HTML     string
 	Time     string
+}
+
+type Friend struct {
+	ID      int64    `db:"id"`
+	Me      string   `db:"me"`
+	Friends []string `db:"friends"`
 }
 
 type User struct {
@@ -58,9 +64,11 @@ var (
 	re             *render.Render
 	store          *sessions.FilesystemStore
 	db             *sql.DB
+	dbfriend             *sql.DB
 	errInvalidUser = errors.New("Invalid User")
 	a              newrelic.Application
     c              = cache.New(3*time.Minute, 5*time.Minute)
+	rclient *redis.Client
 )
 
 func getuserID(name string) int {
@@ -115,17 +123,18 @@ func loadFriends(name string) ([]string, error) {
 	txn := a.StartTransaction("loadFriends", nil, nil)
 	defer txn.End()
 
-	resp, err := http.DefaultClient.Get(pathURIEscape(fmt.Sprintf("%s/%s", isutomoEndpoint, name)))
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
+	//resp, err := http.DefaultClient.Get(pathURIEscape(fmt.Sprintf("%s/%s", isutomoEndpoint, name)))
+	//if err != nil {
+	//	return nil, err
+	//}
+	//defer resp.Body.Close()
 
-	var data struct {
-		Result []string `json:"friends"`
-	}
-	err = json.NewDecoder(resp.Body).Decode(&data)
-	return data.Result, err
+	//var data struct {
+	//	Result []string `json:"friends"`
+	//}
+	//err = json.NewDecoder(resp.Body).Decode(&data)
+	return rclient.SMembers(name).Result()
+	// return data.Result, err
 }
 
 func initializeHandler(w http.ResponseWriter, r *http.Request) {
@@ -141,20 +150,67 @@ func initializeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//rows, err := db.Query(`SELECT id, text from tweets`)
+	//resp, err := http.Get(fmt.Sprintf("%s/initialize", isutomoEndpoint))
+	//if err != nil {
+	//	badRequest(w)
+	//	return
+	//}
+	//defer resp.Body.Close()
+
+	//path, _ := exec.LookPath("mysql")
+	//exec.Command(path, "-u", "root", "-D", "isutomo", "<", "../../sql/seed_isutomo2.sql").Run()
+	//defer dbfriend.Close()
+	//rows, _ := dbfriend.Query("SELECT * FROM friends")
+	//var friends []Friend
 	//for rows.Next() {
-	//	t := new(Tweet)
-	//	rows.Scan(&t.ID, &t.Text)
-	//	t.Text = htmlify(t.Text)
-	//	db.Exec(`UPDATE tweets set text = ? where id = ?`, t.Text, t.ID)
+	//	f := &Friend{}
+	//	var str string
+	//	rows.Scan(&f.ID, &f.Me, &str)
+	//	f.Friends = strings.Split(str, ",")
+
+	//	friends = append(friends, *f)
+	//}
+	//for _, f := range friends {
+	//	for _, fs := range f.Friends {
+	//		rclient.SAdd(f.Me, fs)
+	//	}
 	//}
 
-	resp, err := http.Get(fmt.Sprintf("%s/initialize", isutomoEndpoint))
+	re.JSON(w, http.StatusOK, map[string]string{"result": "ok"})
+}
+
+func redInitializeHandler(w http.ResponseWriter, r *http.Request) {
+	_, err := db.Exec(`DELETE FROM tweets WHERE id > 100000`)
 	if err != nil {
 		badRequest(w)
 		return
 	}
-	defer resp.Body.Close()
+
+	_, err = db.Exec(`DELETE FROM users WHERE id > 1000`)
+	if err != nil {
+		badRequest(w)
+		return
+	}
+	rclient.FlushAll()
+
+	path, _ := exec.LookPath("mysql")
+	exec.Command(path, "-u", "root", "-D", "isutomo", "<", "../../sql/seed_isutomo2.sql").Run()
+	defer dbfriend.Close()
+	rows, _ := dbfriend.Query("SELECT * FROM friends")
+	var friends []Friend
+	for rows.Next() {
+		f := &Friend{}
+		var str string
+		rows.Scan(&f.ID, &f.Me, &str)
+		f.Friends = strings.Split(str, ",")
+
+		friends = append(friends, *f)
+	}
+	for _, f := range friends {
+		for _, fs := range f.Friends {
+			rclient.SAdd(f.Me, fs)
+		}
+	}
 
 	re.JSON(w, http.StatusOK, map[string]string{"result": "ok"})
 }
@@ -349,21 +405,13 @@ func followHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusFound)
 		return
 	}
-
-	jsonStr := `{"user":"` + r.FormValue("user") + `"}`
-	req, err := http.NewRequest(http.MethodPost, pathURIEscape(isutomoEndpoint+"/"+userName), bytes.NewBuffer([]byte(jsonStr)))
-
-	if err != nil {
+	fre := r.FormValue("user")
+	isMember, _ := rclient.SIsMember(userName, fre).Result()
+	if isMember {
 		badRequest(w)
 		return
 	}
-
-	resp, err := http.DefaultClient.Do(req)
-
-	if err != nil || resp.StatusCode != 200 {
-		badRequest(w)
-		return
-	}
+	rclient.SAdd(userName, fre).Result()
 
 	http.Redirect(w, r, "/", http.StatusFound)
 }
@@ -386,21 +434,13 @@ func unfollowHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusFound)
 		return
 	}
-
-	jsonStr := `{"user":"` + r.FormValue("user") + `"}`
-	req, err := http.NewRequest(http.MethodDelete, pathURIEscape(isutomoEndpoint+"/"+userName), bytes.NewBuffer([]byte(jsonStr)))
-
-	if err != nil {
+	fre := r.FormValue("user")
+	isMember, _ := rclient.SIsMember(userName, fre).Result()
+	if !isMember {
 		badRequest(w)
 		return
 	}
-
-	resp, err := http.DefaultClient.Do(req)
-
-	if err != nil || resp.StatusCode != 200 {
-		badRequest(w)
-		return
-	}
+	rclient.SRem(userName, fre).Result()
 
 	http.Redirect(w, r, "/", http.StatusFound)
 }
@@ -672,6 +712,11 @@ func main() {
 		user, password, host, port, dbname,
 	))
 	db.SetMaxIdleConns(150)
+
+	dbfriend, err = sql.Open("mysql", fmt.Sprintf(
+		"%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&loc=Local&parseTime=true",
+		user, password, host, port, "isutomo",
+	))
 	if err != nil {
 		log.Fatalf("Failed to connect to DB: %s.", err.Error())
 	}
@@ -689,9 +734,15 @@ func main() {
 			},
 		},
 	})
+	rclient = redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
 
 	r := mux.NewRouter()
 	r.HandleFunc("/initialize", initializeHandler).Methods("GET")
+    r.HandleFunc("/redis", redInitializeHandler).Methods("GET")
 
 	l := r.PathPrefix("/login").Subrouter()
 	l.Methods("POST").HandlerFunc(loginHandler)

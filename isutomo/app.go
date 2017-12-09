@@ -12,15 +12,16 @@ import (
 	"os/exec"
 	"strings"
 
-    newrelic "github.com/newrelic/go-agent"
+	"github.com/newrelic/go-agent"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
+	"github.com/go-redis/redis"
 )
 
 type Friend struct {
-	ID      int64  `db:"id"`
-	Me      string `db:"me"`
-	Friends string `db:"friends"`
+	ID      int64    `db:"id"`
+	Me      string   `db:"me"`
+	Friends []string `db:"friends"`
 }
 
 type DB struct {
@@ -33,9 +34,11 @@ type DB struct {
 }
 
 var (
-    conn *DB
-    a    newrelic.Application
+	conn    *DB
+	a       newrelic.Application
+	rclient *redis.Client
 )
+
 func (db *DB) initEnvs() error {
 
 	db.Host = os.Getenv("ISUTOMO_DB_HOST")
@@ -85,35 +88,31 @@ func (db *DB) connect() error {
 
 func (db *DB) fetchFriend(user string) (*Friend, error) {
 
-	friend := new(Friend)
+	// friend := new(Friend)
 
-	stmt, err := db.Conn.Prepare("SELECT * FROM friends WHERE me = ?")
-
+	// stmt, err := db.Conn.Prepare("SELECT * FROM friends WHERE me = ?")
+	friends, err := rclient.SMembers(user).Result()
+	// err = stmt.QueryRow(user).Scan(&friend.ID, &friend.Me, &friend.Friends)
 	if err != nil {
 		return nil, err
 	}
 
-	err = stmt.QueryRow(user).Scan(&friend.ID, &friend.Me, &friend.Friends)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return friend, nil
+	return &Friend{Me: user, Friends: friends}, nil
 }
 
-func (db *DB) updateFriend(user, friends string) error {
-	_, err := db.Conn.Exec("UPDATE friends SET friends = ? WHERE me = ?", friends, user)
-	return err
+func (db *DB) updateFriend(user, friend string) error {
+	rclient.SAdd( user, friend).Result()
+	return nil
 }
 
-func (friend *Friend) getFriends() []string {
-	return strings.Split(friend.Friends, ",")
+func (db *DB) deleteFriend(user, friend string) error {
+	rclient.SRem(user, friend).Result()
+	return nil
 }
 
 func getUserHandler(w http.ResponseWriter, r *http.Request) {
-    txn := a.StartTransaction("getUserHandler", nil, nil)
-    defer txn.End()
+	txn := a.StartTransaction("getUserHandler", nil, nil)
+	defer txn.End()
 
 	me := mux.Vars(r)["me"]
 
@@ -126,7 +125,7 @@ func getUserHandler(w http.ResponseWriter, r *http.Request) {
 	friendJSON, err := json.Marshal(struct {
 		Friends []string `json:"friends"`
 	}{
-		Friends: friend.getFriends(),
+		Friends: friend.Friends,
 	})
 
 	if err != nil {
@@ -139,8 +138,8 @@ func getUserHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func postUserHandler(w http.ResponseWriter, r *http.Request) {
-    txn := a.StartTransaction("postUser", nil, nil)
-    defer txn.End()
+	txn := a.StartTransaction("postUser", nil, nil)
+	defer txn.End()
 
 	me := mux.Vars(r)["me"]
 
@@ -161,32 +160,35 @@ func postUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, val := range friend.getFriends() {
-		if strings.EqualFold(val, data.User) {
-
-			errJSON, err := json.Marshal(struct {
-				Error string `json:"error"`
-			}{
-				Error: data.User + " is already your friend.",
-			})
-
-			if err != nil {
-				errorResponseWriter(w, http.StatusInternalServerError, err)
-				return
-			}
-
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write(errJSON)
-			return
-		}
+	isMember, err := rclient.SIsMember(me, data.User).Result()
+	if err != nil {
+		errorResponseWriter(w, http.StatusBadRequest, err)
+		return
 	}
 
-	conn.updateFriend(me, friend.Friends+","+data.User)
+	if isMember {
+		errJSON, err := json.Marshal(struct {
+			Error string `json:"error"`
+		}{
+			Error: data.User + " is already your friend.",
+		})
+
+		if err != nil {
+			errorResponseWriter(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write(errJSON)
+		return
+	}
+
+	conn.updateFriend(me, data.User)
 
 	friendJSON, err := json.Marshal(struct {
 		Friends []string `json:"friends"`
 	}{
-		Friends: append(friend.getFriends(), data.User),
+		Friends: append(friend.Friends, data.User),
 	})
 
 	if err != nil {
@@ -199,8 +201,8 @@ func postUserHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func deleteUserHandler(w http.ResponseWriter, r *http.Request) {
-    txn := a.StartTransaction("deleteUser", nil, nil)
-    defer txn.End()
+	txn := a.StartTransaction("deleteUser", nil, nil)
+	defer txn.End()
 
 	me := mux.Vars(r)["me"]
 
@@ -210,7 +212,7 @@ func deleteUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	friends := friend.getFriends()
+	friends := friend.Friends
 
 	data := struct {
 		User string `json:"user"`
@@ -223,28 +225,30 @@ func deleteUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, val := range friends {
-		if strings.EqualFold(val, data.User) {
+	isMember, err := rclient.SIsMember(me, data.User).Result()
+	if err != nil {
+		errorResponseWriter(w, http.StatusBadRequest, err)
+		return
+	}
 
-			friends = remove(friends, data.User)
+	if isMember {
+		friends = remove(friends, data.User)
+		conn.deleteFriend(me, data.User)
 
-			conn.updateFriend(me, strings.Join(friends, ","))
+		friendJSON, err := json.Marshal(struct {
+			Friends []string `json:"friends"`
+		}{
+			Friends: friends,
+		})
 
-			friendJSON, err := json.Marshal(struct {
-				Friends []string `json:"friends"`
-			}{
-				Friends: friends,
-			})
-
-			if err != nil {
-				errorResponseWriter(w, http.StatusInternalServerError, err)
-				return
-			}
-
-			w.WriteHeader(http.StatusOK)
-			w.Write(friendJSON)
+		if err != nil {
+			errorResponseWriter(w, http.StatusInternalServerError, err)
 			return
 		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write(friendJSON)
+		return
 	}
 
 	errJSON, err := json.Marshal(struct {
@@ -308,6 +312,25 @@ func initializeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	rows, err := conn.Conn.Query("SELECT * FROM friends")
+	defer rows.Close()
+
+	var friends []Friend
+	for rows.Next() {
+		f := new(Friend)
+		var str string
+		if err = rows.Scan(&f.ID, &f.Me, &str); err != nil {
+			log.Fatal(err)
+		}
+		f.Friends = strings.Split(str, ",")
+		friends = append(friends, *f)
+	}
+
+	for _, f := range friends {
+		for _, fs := range f.Friends {
+			rclient.SAdd(f.Me, fs)
+		}
+	}
 	resultJSON, err := json.Marshal(struct {
 		Result []string `json:"result"`
 	}{
@@ -335,18 +358,21 @@ func NewRouter() *mux.Router {
 }
 
 func main() {
-    cfg := newrelic.NewConfig("ISUCONApp", "31897725152cfdc8c8def14ebbabc1fbe4e8f050")
-    var e error
-    a, e = newrelic.NewApplication(cfg)
-    if nil != e {
-        fmt.Println(e)
-        os.Exit(1)
-    }
+	cfg := newrelic.NewConfig("ISUCONApp", "31897725152cfdc8c8def14ebbabc1fbe4e8f050")
+	var e error
+	a, e = newrelic.NewApplication(cfg)
+	if nil != e {
+		fmt.Println(e)
+		os.Exit(1)
+	}
+	rclient = redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
 
 	conn = new(DB)
-
 	err := conn.connect()
-
 	if err != nil {
 		log.Fatal(err)
 	}
